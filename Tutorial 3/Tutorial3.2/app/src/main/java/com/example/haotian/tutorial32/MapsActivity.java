@@ -37,6 +37,7 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
     private LocationRequest mLocationRequest;
     private Location mCurrentLocation;
     private String mLastUpdateTime;
+    private Bitmap imageBitmap;
     private com.google.android.gms.location.LocationListener mLocationListener = new com.google.android.gms.location.LocationListener() {
         @Override
         public void onLocationChanged(Location location) {
@@ -51,7 +52,7 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
         setContentView(R.layout.activity_maps);
         setUpMapIfNeeded();
         buildGoogleApiClient();
-        createLocationRequest();
+        mGoogleApiClient.connect();
 
         picButton = (Button) findViewById(R.id.photobutton);
 
@@ -66,7 +67,6 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
     @Override
     protected void onPause() {
         super.onPause();
-        stopLocationUpdates();
     }
 
     @Override
@@ -97,17 +97,19 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
     // Next three methods needed to build Google API Client
     @Override
     public void onConnected(Bundle connectionHint) {
+        System.out.println("CONNECTION SUCCEEDED");
+        createLocationRequest();
         startLocationUpdates();
     }
 
     @Override
     public void onConnectionSuspended(int cause) {
-        // We are not connected anymore!
+        stopLocationUpdates();
     }
 
     @Override
     public void onConnectionFailed(ConnectionResult result) {
-        // We tried to connect but failed!
+        System.out.println("CONNECTION FAILED");
     }
 
 
@@ -168,8 +170,13 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-
-
+        if(requestCode == THUMBNAIL && resultCode == RESULT_OK){
+            Bundle extras = data.getExtras();
+            imageBitmap = (Bitmap) extras.get("data");
+            // developers.google.com/maps/documentation/android-api/marker
+            mMap.addMarker(new MarkerOptions()
+                                .position(new LatLng(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude()))
+                                .icon(BitmapDescriptorFactory.fromBitmap(imageBitmap)));
+        }
     }
-
 }
