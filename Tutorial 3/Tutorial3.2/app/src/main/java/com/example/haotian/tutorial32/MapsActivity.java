@@ -3,9 +3,11 @@ package com.example.haotian.tutorial32;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.location.Location;
 import android.location.LocationListener;
 import android.os.Bundle;
+import android.os.Environment;
 import android.provider.MediaStore;
 import android.support.v4.app.FragmentActivity;
 import android.util.Log;
@@ -22,15 +24,23 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.opencsv.*;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.text.DateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 public class MapsActivity extends FragmentActivity implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
     public static final String TAG = "MapsActivity";
     public static final int THUMBNAIL = 1;
-
-
+    protected String root;
+    String filePath;
     private GoogleApiClient mGoogleApiClient;
     private GoogleMap mMap; // Might be null if Google Play services APK is not available.
     private Button picButton; //takes user to camera
@@ -38,6 +48,9 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
     private Location mCurrentLocation;
     private String mLastUpdateTime;
     private Bitmap imageBitmap;
+    private List<String[]> entries;
+    private File file;
+    private FileReader mFileReader;
     private com.google.android.gms.location.LocationListener mLocationListener = new com.google.android.gms.location.LocationListener() {
         @Override
         public void onLocationChanged(Location location) {
@@ -53,15 +66,47 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
         setUpMapIfNeeded();
         buildGoogleApiClient();
         mGoogleApiClient.connect();
-
+        root = Environment.getExternalStorageDirectory().toString();
+        filePath = root + "/DCIM/markers.csv";
         picButton = (Button) findViewById(R.id.photobutton);
-
         picButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 dispatchTakePictureIntent();
             }
         });
+
+        //read the file to initialize
+        try {
+            mFileReader = new FileReader(filePath);
+        } catch (java.io.FileNotFoundException e) {
+            try {
+                String[] firstRow = {"TimeStamp", "Latitude", "Longitude"};
+                FileWriter mFileWriter = new FileWriter(filePath);
+                CSVWriter mCSVWriter = new CSVWriter(mFileWriter);
+                mCSVWriter.writeNext(firstRow);
+                mCSVWriter.close();
+                mFileWriter.close();
+            } catch (Exception e2) {
+                e.printStackTrace();
+            }
+        }
+        //now let's read again to make sure that we got the file read
+        try {
+            mFileReader = new FileReader(filePath);
+        } catch (java.io.FileNotFoundException e) {
+            e.printStackTrace();
+        }
+        CSVReader mCSVReader = new CSVReader(mFileReader);
+
+        //read CSV into entries list
+        try {
+            entries = mCSVReader.readAll();
+        } catch (java.io.IOException e) {
+            e.printStackTrace();
+        }
+
+        populateMarkers();
     }
 
     @Override
@@ -79,13 +124,13 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
     // TODO: Potentially change parameters
     protected void createLocationRequest() {
         mLocationRequest = new LocationRequest();
-        mLocationRequest.setInterval(10000);
-        mLocationRequest.setFastestInterval(5000);
+        mLocationRequest.setInterval(3000);
+        mLocationRequest.setFastestInterval(1000);
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
     }
 
     // Starts location updates (based on method from Android dev page)
-    protected void startLocationUpdates(){
+    protected void startLocationUpdates() {
         LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, mLocationListener);
     }
 
@@ -113,11 +158,10 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
     }
 
 
-
     // Method to create picture-taking intent based on method given in instructions.
-    private void dispatchTakePictureIntent(){
+    private void dispatchTakePictureIntent() {
         Intent takePicture = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        if(takePicture.resolveActivity(getPackageManager()) != null)
+        if (takePicture.resolveActivity(getPackageManager()) != null)
             startActivityForResult(takePicture, THUMBNAIL);
     }
 
@@ -165,18 +209,79 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
      * This should only be called once and when we are sure that {@link #mMap} is not null.
      */
     private void setUpMap() {
-        mMap.addMarker(new MarkerOptions().position(new LatLng(20, 20)).title("EECS397/600"));
+        Marker initialMarker = mMap.addMarker(new MarkerOptions().position(new LatLng(41.507105, -81.609371)).title("EECS397/600 atCWRU"));
+        initialMarker.showInfoWindow();
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if(requestCode == THUMBNAIL && resultCode == RESULT_OK){
+        if (requestCode == THUMBNAIL && resultCode == RESULT_OK) {
+            //Gather basic data
+            String timeStamp = "" + System.currentTimeMillis();
             Bundle extras = data.getExtras();
             imageBitmap = (Bitmap) extras.get("data");
-            // developers.google.com/maps/documentation/android-api/marker
+            FileOutputStream out = null;
+
+            //Saving the thumbnail
+            try {
+                out = new FileOutputStream(root + "/DCIM" + "/bitmap" + timeStamp + ".png");
+                imageBitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                try {
+                    if (out != null) {
+                        out.close();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            //Add the marker
+            LatLng position = new LatLng(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude());
+            Marker newMarker = mMap.addMarker(new MarkerOptions()
+                    .position(position)
+                    .icon(BitmapDescriptorFactory.fromBitmap(imageBitmap)));
+
+            //Save the marker
+            try {
+                addToCSV(position, timeStamp);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void addToCSV(LatLng position, String timeStamp) throws java.io.FileNotFoundException, java.io.IOException {
+        //to be optimized, everything is taken out here from the old file, modified and rewritten. It is only efficient for small amounts of rows here
+        //If we have time we could optimize more here, but for our application it's enough
+        String[] newRow = {timeStamp, "" + position.latitude, "" + position.longitude};
+        FileWriter mFileWriter = new FileWriter(filePath);
+        CSVWriter mCSVWriter = new CSVWriter(mFileWriter);
+        entries.add(newRow);
+        mCSVWriter.writeAll(entries);
+        mCSVWriter.close();
+    }
+
+    private void populateMarkers() {
+        for (int rowNumber = 1; rowNumber < entries.size(); rowNumber++) {
+            //(The first row is ignored)
+            String[] row = entries.get(rowNumber);
+            //convert a raw into 3 variables
+            long timeStamp = Long.parseLong(row[0]);
+            double latitude = Double.parseDouble(row[1]);
+            double longitude = Double.parseDouble(row[2]);
+            //open the related bitmapFIle
+            String bitmapFile = root + "/DCIM" + "/bitmap" + timeStamp + ".png";
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inPreferredConfig = Bitmap.Config.ARGB_8888;
+            Bitmap imageBitmap = BitmapFactory.decodeFile(bitmapFile, options);
+            //Add the marker
+            LatLng position = new LatLng(latitude, longitude);
             mMap.addMarker(new MarkerOptions()
-                                .position(new LatLng(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude()))
-                                .icon(BitmapDescriptorFactory.fromBitmap(imageBitmap)));
+                    .position(position)
+                    .icon(BitmapDescriptorFactory.fromBitmap(imageBitmap)));
         }
     }
 }
