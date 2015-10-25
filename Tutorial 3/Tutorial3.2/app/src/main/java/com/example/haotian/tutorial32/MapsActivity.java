@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Hashtable;
 import java.util.List;
 
 public class MapsActivity extends FragmentActivity implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
@@ -50,6 +51,7 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
     private String mLastUpdateTime;
     private Bitmap imageBitmap;
     private List<String[]> entries;
+    private Hashtable<Marker, Long> markerToTimestamp;
     private File file;
     private FileReader mFileReader;
     private com.google.android.gms.location.LocationListener mLocationListener = new com.google.android.gms.location.LocationListener() {
@@ -59,6 +61,7 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
             mLastUpdateTime = DateFormat.getTimeInstance().format(new Date());
         }
     };
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -82,7 +85,7 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
             mFileReader = new FileReader(filePath);
         } catch (java.io.FileNotFoundException e) {
             try {
-                String[] firstRow = {"TimeStamp", "Latitude", "Longitude"};
+                String[] firstRow = {"TimeStamp", "Latitude", "Longitude", "(Title)", "(Snippet)"};
                 FileWriter mFileWriter = new FileWriter(filePath);
                 CSVWriter mCSVWriter = new CSVWriter(mFileWriter);
                 mCSVWriter.writeNext(firstRow);
@@ -224,11 +227,10 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
         mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
             @Override
             public boolean onMarkerClick(Marker marker) {
-                if(marker.getTitle().equals("") && marker.getSnippet().equals("")) {
+                if (marker.getTitle().equals("") && marker.getSnippet().equals("")) {
                     TitleSnippetDialogFragment d = TitleSnippetDialogFragment.createFragment(marker);
                     d.show(getSupportFragmentManager(), "title_snippet");
-                }
-                else {
+                } else {
                     marker.showInfoWindow();
                 }
                 return true;
@@ -240,7 +242,7 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == THUMBNAIL && resultCode == RESULT_OK) {
             //Gather basic data
-            String timeStamp = "" + System.currentTimeMillis();
+            Long timeStamp = System.currentTimeMillis();
             Bundle extras = data.getExtras();
             imageBitmap = (Bitmap) extras.get("data");
             FileOutputStream out = null;
@@ -265,11 +267,14 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
             LatLng position = new LatLng(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude());
             Marker newMarker = mMap.addMarker(new MarkerOptions()
                     .position(position)
+                    .title("Untitled")
+                    .snippet("No Description")
                     .icon(BitmapDescriptorFactory.fromBitmap(imageBitmap)));
 
             //Save the marker
             try {
-                addToCSV(position, timeStamp);
+                addToCSV(position, ""+timeStamp);
+                markerToTimestamp.put(newMarker,timeStamp);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -279,10 +284,29 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
     private void addToCSV(LatLng position, String timeStamp) throws java.io.FileNotFoundException, java.io.IOException {
         //to be optimized, everything is taken out here from the old file, modified and rewritten. It is only efficient for small amounts of rows here
         //If we have time we could optimize more here, but for our application it's enough
-        String[] newRow = {timeStamp, "" + position.latitude, "" + position.longitude};
+        String[] newRow = {timeStamp, "" + position.latitude, "" + position.longitude, "Untitled", "No Description"};
         FileWriter mFileWriter = new FileWriter(filePath);
         CSVWriter mCSVWriter = new CSVWriter(mFileWriter);
         entries.add(newRow);
+        mCSVWriter.writeAll(entries);
+        mCSVWriter.close();
+    }
+
+    public void updateTitleAndSnippet(Marker marker, String newTitle, String newSnippet) throws java.io.IOException {
+        FileWriter mFileWriter = new FileWriter(filePath);
+        CSVWriter mCSVWriter = new CSVWriter(mFileWriter);
+        String[] row = rowOf(markerToTimestamp.get(marker));
+        row[3] = newTitle;
+        row[4] = newSnippet;
+        mCSVWriter.writeAll(entries);
+        mCSVWriter.close();
+    }
+
+    public void removeMarker(Marker marker) throws java.io.IOException {
+        FileWriter mFileWriter = new FileWriter(filePath);
+        CSVWriter mCSVWriter = new CSVWriter(mFileWriter);
+        String[] row = rowOf(markerToTimestamp.get(marker));
+        entries.remove(row);
         mCSVWriter.writeAll(entries);
         mCSVWriter.close();
     }
@@ -295,6 +319,9 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
             long timeStamp = Long.parseLong(row[0]);
             double latitude = Double.parseDouble(row[1]);
             double longitude = Double.parseDouble(row[2]);
+            String title = row[3];
+            String snippet = row[4];
+
             //open the related bitmapFIle
             String bitmapFile = root + "/DCIM" + "/bitmap" + timeStamp + ".png";
             BitmapFactory.Options options = new BitmapFactory.Options();
@@ -302,11 +329,23 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
             Bitmap imageBitmap = BitmapFactory.decodeFile(bitmapFile, options);
             //Add the marker
             LatLng position = new LatLng(latitude, longitude);
-            mMap.addMarker(new MarkerOptions()
+            Marker newMarker = mMap.addMarker(new MarkerOptions()
                     .position(position)
-                    .title("Untitled")
-                    .snippet("Undefined")
+                    .title(title)
+                    .snippet(snippet)
                     .icon(BitmapDescriptorFactory.fromBitmap(imageBitmap)));
+            markerToTimestamp.put(newMarker, timeStamp);
+
         }
     }
+
+    String[] rowOf(Long ts) {
+        for (int rowNumber = 1; rowNumber < entries.size(); rowNumber++) {
+            String[] row = entries.get(rowNumber);
+            if (Long.parseLong(row[0]) == ts)
+                return row;
+        }
+        return null;
+    }
+
 }
