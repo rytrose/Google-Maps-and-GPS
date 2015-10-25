@@ -6,6 +6,7 @@ import android.app.Dialog;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.CheckBox;
 import android.widget.EditText;
 
 import com.google.android.gms.maps.model.Marker;
@@ -33,11 +34,19 @@ public class TitleSnippetDialogFragment extends DialogFragment{
                 title = titleText.getText().toString();
                 EditText snippetText = (EditText) v.findViewById(R.id.Edit_Snippet);
                 snippet = snippetText.getText().toString();
+                CheckBox deleteCheck = (CheckBox) v.findViewById(R.id.Delete_Check);
                 marker.setTitle(title);
                 marker.setSnippet(snippet);
                 try {((MapsActivity)builder.getContext()).updateTitleAndSnippet(marker,title,snippet);}
                 catch (java.io.IOException e){
                     e.printStackTrace();
+                }
+                if (deleteCheck.isChecked()){
+                    try {((MapsActivity)builder.getContext()).removeMarker(marker);}
+                    catch (java.io.IOException e){
+                        e.printStackTrace();
+                    }
+                    marker.remove();
                 }
             }
         })

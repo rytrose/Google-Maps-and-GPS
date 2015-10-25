@@ -20,11 +20,11 @@
         android:editable="false"
         android:inputType="text" />
 
-    <Button
-        android:layout_width="wrap_content"
+    <CheckBox
+        android:layout_width="185dp"
         android:layout_height="wrap_content"
-        android:text="New Button"
-        android:id="@+id/button"
-        android:layout_gravity="center_horizontal" />
+        android:text="Delete this location"
+        android:id="@+id/Delete_Check"
+        android:checked="false" />
 
 </LinearLayout>
