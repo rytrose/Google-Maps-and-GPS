@@ -35,6 +35,10 @@ public class TitleSnippetDialogFragment extends DialogFragment{
                 snippet = snippetText.getText().toString();
                 marker.setTitle(title);
                 marker.setSnippet(snippet);
+                try {((MapsActivity)builder.getContext()).updateTitleAndSnippet(marker,title,snippet);}
+                catch (java.io.IOException e){
+                    e.printStackTrace();
+                }
             }
         })
                 .setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
