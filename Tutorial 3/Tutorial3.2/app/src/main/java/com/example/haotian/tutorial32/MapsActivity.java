@@ -213,14 +213,25 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
         Marker initialMarker = mMap.addMarker(new MarkerOptions().position(new LatLng(41.507105, -81.609371)).title("EECS397/600 atCWRU"));
         initialMarker.showInfoWindow();
 
+        mMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
+            @Override
+            public void onInfoWindowClick(Marker marker) {
+                TitleSnippetDialogFragment d = TitleSnippetDialogFragment.createFragment(marker);
+                d.show(getSupportFragmentManager(), "title_snippet");
+            }
+        });
+
         mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
             @Override
             public boolean onMarkerClick(Marker marker) {
-                TitleSnippetDialogFragment d = new TitleSnippetDialogFragment();
-                d.show(getSupportFragmentManager(), "title_snippet");
-                marker.setTitle(d.title);
-                marker.setSnippet(d.snippet);
-                return false;
+                if(marker.getTitle().equals("") && marker.getSnippet().equals("")) {
+                    TitleSnippetDialogFragment d = TitleSnippetDialogFragment.createFragment(marker);
+                    d.show(getSupportFragmentManager(), "title_snippet");
+                }
+                else {
+                    marker.showInfoWindow();
+                }
+                return true;
             }
         });
     }
@@ -293,6 +304,8 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
             LatLng position = new LatLng(latitude, longitude);
             mMap.addMarker(new MarkerOptions()
                     .position(position)
+                    .title("Untitled")
+                    .snippet("Undefined")
                     .icon(BitmapDescriptorFactory.fromBitmap(imageBitmap)));
         }
     }
