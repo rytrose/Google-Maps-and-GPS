@@ -18,6 +18,7 @@ public class TitleSnippetDialogFragment extends DialogFragment{
     public String title;
     public String snippet;
     public Marker marker;
+    public MapsActivity context;
 
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState){
@@ -37,12 +38,12 @@ public class TitleSnippetDialogFragment extends DialogFragment{
                 CheckBox deleteCheck = (CheckBox) v.findViewById(R.id.Delete_Check);
                 marker.setTitle(title);
                 marker.setSnippet(snippet);
-                try {((MapsActivity)builder.getContext()).updateTitleAndSnippet(marker,title,snippet);}
+                try {context.updateTitleAndSnippet(marker,title,snippet);}
                 catch (java.io.IOException e){
                     e.printStackTrace();
                 }
                 if (deleteCheck.isChecked()){
-                    try {((MapsActivity)builder.getContext()).removeMarker(marker);}
+                    try {context.removeMarker(marker);}
                     catch (java.io.IOException e){
                         e.printStackTrace();
                     }
@@ -60,9 +61,10 @@ public class TitleSnippetDialogFragment extends DialogFragment{
         return builder.create();
     }
 
-    public static TitleSnippetDialogFragment createFragment(Marker m){
+    public static TitleSnippetDialogFragment createFragment(Marker m, MapsActivity context){
         TitleSnippetDialogFragment t = new TitleSnippetDialogFragment();
         t.marker = m;
+        t.context = context;
         return t;
     }
 }

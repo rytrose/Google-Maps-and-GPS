@@ -54,6 +54,7 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
     private Hashtable<Marker, Long> markerToTimestamp;
     private File file;
     private FileReader mFileReader;
+    private MapsActivity thisActivity = this;
     private com.google.android.gms.location.LocationListener mLocationListener = new com.google.android.gms.location.LocationListener() {
         @Override
         public void onLocationChanged(Location location) {
@@ -219,7 +220,7 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
         mMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
             @Override
             public void onInfoWindowClick(Marker marker) {
-                TitleSnippetDialogFragment d = TitleSnippetDialogFragment.createFragment(marker);
+                TitleSnippetDialogFragment d = TitleSnippetDialogFragment.createFragment(marker,thisActivity);
                 d.show(getSupportFragmentManager(), "title_snippet");
             }
         });
@@ -228,7 +229,7 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
             @Override
             public boolean onMarkerClick(Marker marker) {
                 if (marker.getTitle().equals("") && marker.getSnippet().equals("")) {
-                    TitleSnippetDialogFragment d = TitleSnippetDialogFragment.createFragment(marker);
+                    TitleSnippetDialogFragment d = TitleSnippetDialogFragment.createFragment(marker,thisActivity);
                     d.show(getSupportFragmentManager(), "title_snippet");
                 } else {
                     marker.showInfoWindow();
@@ -274,7 +275,7 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
             //Save the marker
             try {
                 addToCSV(position, ""+timeStamp);
-                markerToTimestamp.put(newMarker,timeStamp);
+                markerToTimestamp.put(newMarker, timeStamp);
             } catch (Exception e) {
                 e.printStackTrace();
             }
