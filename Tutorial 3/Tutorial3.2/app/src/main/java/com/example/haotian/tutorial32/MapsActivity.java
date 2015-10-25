@@ -1,5 +1,6 @@
 package com.example.haotian.tutorial32;
 
+import android.app.DialogFragment;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -211,6 +212,17 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
     private void setUpMap() {
         Marker initialMarker = mMap.addMarker(new MarkerOptions().position(new LatLng(41.507105, -81.609371)).title("EECS397/600 atCWRU"));
         initialMarker.showInfoWindow();
+
+        mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
+            @Override
+            public boolean onMarkerClick(Marker marker) {
+                TitleSnippetDialogFragment d = new TitleSnippetDialogFragment();
+                d.show(getSupportFragmentManager(), "title_snippet");
+                marker.setTitle(d.title);
+                marker.setSnippet(d.snippet);
+                return false;
+            }
+        });
     }
 
     @Override
