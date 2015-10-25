@@ -214,8 +214,6 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
      * This should only be called once and when we are sure that {@link #mMap} is not null.
      */
     private void setUpMap() {
-        Marker initialMarker = mMap.addMarker(new MarkerOptions().position(new LatLng(41.507105, -81.609371)).title("EECS397/600 atCWRU"));
-        initialMarker.showInfoWindow();
 
         mMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
             @Override
