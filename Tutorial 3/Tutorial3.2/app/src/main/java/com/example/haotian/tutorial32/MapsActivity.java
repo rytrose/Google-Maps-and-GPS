@@ -51,7 +51,7 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
     private String mLastUpdateTime;
     private Bitmap imageBitmap;
     private List<String[]> entries;
-    private Hashtable<Marker, Long> markerToTimestamp;
+    private Hashtable<Marker, Long> markerToTimestamp = new Hashtable<>();
     private File file;
     private FileReader mFileReader;
     private MapsActivity thisActivity = this;
